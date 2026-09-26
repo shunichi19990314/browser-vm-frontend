@@ -9,7 +9,7 @@
   body { margin:0; background:#121212; color:#e0e0e0; font-family:sans-serif;
          display:flex; flex-direction:column; align-items:center; min-height:100vh; padding:20px 0; }
   h1 { font-size:1.4rem; font-weight:300; margin:0 0 8px; }
-  #status { color:#0f0; font-family:monospace; font-size:.9rem; margin:0 0 16px; }
+  #status { color:#0f0; font-family:monospace; font-size:.9rem; margin:0 0 16px; padding:0 10px; text-align:center; word-break:break-all; }
   #screen_container { background:#000; border:1px solid #333; border-radius:4px; padding:4px; }
   #screen_container div { white-space:pre; font:14px monospace; line-height:14px; color:#fff; }
   .serial { width:640px; max-width:92vw; margin-top:16px; background:#1a1a2e; border:1px solid #333; border-radius:6px; overflow:hidden; }
@@ -24,73 +24,87 @@
 <h1>🐧 Browser Linux VM</h1>
 <p id="status">エミュレーターを読み込み中...</p>
 
-<!-- VGA画面（テキストコンソール） -->
 <div id="screen_container">
   <div style="white-space: pre; font: 14px monospace; line-height: 14px"></div>
   <canvas style="display: none"></canvas>
 </div>
 
-<!-- シリアルコンソール（確実に入出力できる保険） -->
 <div class="serial">
-  <div class="serial-header">シリアルコンソール — ここにコマンドを入力してEnter</div>
+  <div class="serial-header">シリアルコンソール — コマンド入力欄</div>
   <div id="serial_out"></div>
   <div class="serial-input-row">
     <input id="serial_in" placeholder="例: uname -a / ls / cat /etc/os-release" disabled>
   </div>
 </div>
 
-<p class="hint">黒い画面(VGA)にプロンプトが出ない場合は、上のシリアルコンソールを使用してください。<br>シェルのプロンプトは <strong>%</strong> で終わります（ログイン不要）。</p>
+<p class="hint">シェルのプロンプトは <strong>%</strong> で終わります（ログイン不要）。</p>
 
-<!-- ✅ 実証済みの組み合わせ: JS/WASMはnpm CDN -->
-<script src="https://cdn.jsdelivr.net/npm/v86@latest/build/libv86.js"></script>
+<!-- ✅ バージョンを 0.5.44 に固定し、キャッシュ回避の ?v=2 を付与 -->
+<script id="v86-script" src="https://cdn.jsdelivr.net/npm/v86@0.5.44/build/libv86.js?v=2"></script>
 <script>
 const statusEl = document.getElementById('status');
 const serialOut = document.getElementById('serial_out');
 const serialIn = document.getElementById('serial_in');
 
-if (typeof V86 === 'undefined') {
-  statusEl.textContent = '❌ libv86.js の読み込みに失敗しました';
+// スクリプトの読み込み失敗時にURLを表示する
+document.getElementById('v86-script').onerror = function() {
+  statusEl.innerText = '❌ libv86.js の読み込みに失敗: ' + this.src;
   statusEl.style.color = 'red';
-} else {
+};
+
+// スクリプトが読み込まれるまで少し待つ（またはDOMContentLoaded）
+window.addEventListener('load', function() {
+  if (typeof V86 === 'undefined') {
+    // すでにonerrorでエラー表示されている可能性があるが、念のため
+    if (!statusEl.textContent.includes('❌')) {
+      statusEl.textContent = '❌ V86が定義されていません。スクリプトがブロックされている可能性があります。';
+      statusEl.style.color = 'red';
+    }
+    return;
+  }
+
   statusEl.textContent = 'Linuxを起動中... (10〜60秒)';
 
-  const emulator = new V86({
-    // ✅ JS/WASM: npmパッケージに存在する
-    wasm_path: 'https://cdn.jsdelivr.net/npm/v86@latest/build/v86.wasm',
-    memory_size: 64 * 1024 * 1024,
-    vga_memory_size: 2 * 1024 * 1024,
-    screen_container: document.getElementById('screen_container'),
-    // ✅ BIOS: GitHubリポジトリに存在する
-    bios:     { url: 'https://cdn.jsdelivr.net/gh/copy/v86@master/bios/seabios.bin' },
-    vga_bios: { url: 'https://cdn.jsdelivr.net/gh/copy/v86@master/bios/vgabios.bin' },
-    // ✅ カーネル: CORS許可済みの静的ホスト（実動実例と同じもの）
-    bzimage:  { url: 'https://static.simonwillison.net/static/cors-allow/2026/buildroot-bzimage68.bin' },
-    autostart: true
-  });
+  try {
+    const emulator = new V86({
+      // ✅ JS/WASM: バージョン固定
+      wasm_path: 'https://cdn.jsdelivr.net/npm/v86@0.5.44/build/v86.wasm?v=2',
+      memory_size: 64 * 1024 * 1024,
+      vga_memory_size: 2 * 1024 * 1024,
+      screen_container: document.getElementById('screen_container'),
+      // ✅ BIOS: GitHubリポジトリから
+      bios:     { url: 'https://cdn.jsdelivr.net/gh/copy/v86@master/bios/seabios.bin' },
+      vga_bios: { url: 'https://cdn.jsdelivr.net/gh/copy/v86@master/bios/vgabios.bin' },
+      // ✅ カーネル: CORS許可済みホスト
+      bzimage:  { url: 'https://static.simonwillison.net/static/cors-allow/2026/buildroot-bzimage68.bin' },
+      autostart: true
+    });
 
-  // シリアルコンソールの出力を表示＆プロンプト検出
-  let buf = '';
-  emulator.add_listener('serial0-output-byte', function(b) {
-    const ch = String.fromCharCode(b);
-    if (ch === '\r') return;
-    serialOut.textContent += ch;
-    serialOut.scrollTop = serialOut.scrollHeight;
-    buf = (buf + ch).slice(-40);
-    if (buf.endsWith('% ')) {
-      statusEl.textContent = '✅ 起動完了！シリアルコンソールにコマンドを入力できます';
-      serialIn.disabled = false;
-      serialIn.focus();
-    }
-  });
+    let buf = '';
+    emulator.add_listener('serial0-output-byte', function(b) {
+      const ch = String.fromCharCode(b);
+      if (ch === '\r') return;
+      serialOut.textContent += ch;
+      serialOut.scrollTop = serialOut.scrollHeight;
+      buf = (buf + ch).slice(-40);
+      if (buf.endsWith('% ')) {
+        statusEl.textContent = '✅ 起動完了！シリアルコンソールにコマンドを入力できます';
+        serialIn.disabled = false;
+        serialIn.focus();
+      }
+    });
 
-  // シリアルコンソールへの入力
-  serialIn.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-      emulator.serial0_send(serialIn.value + '\n');
-      serialIn.value = '';
-    }
-  });
-}
+    serialIn.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        emulator.serial0_send(serialIn.value + '\n');
+        serialIn.value = '';
+      }
+    });
+  } catch (e) {
+    statusEl.textContent = '❌ 起動エラー: ' + e.message;
+    statusEl.style.color = 'red';
+  }
+});
 </script>
 </body>
 </html>
