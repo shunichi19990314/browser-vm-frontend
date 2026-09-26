@@ -67,8 +67,8 @@
         終了: 右上のタブを閉じる
     </div>
 
-    <!-- ✅ v86公式CDN (copy.sh) を使用 -->
-    <script src="https://copy.sh/v86/build/libv86.js"></script>
+    <!-- ✅ jsdelivr CDN (最も安定) を使用 -->
+    <script src="https://cdn.jsdelivr.net/gh/copy/v86@master/build/libv86.js"></script>
     
     <script>
         const statusEl = document.getElementById('status');
@@ -81,15 +81,15 @@
             statusEl.innerText = "Linuxを起動中... (初回は1分ほどかかることがあります)";
             
             var emulator = new V86({
-                wasm_path: "https://copy.sh/v86/build/v86.wasm",
+                wasm_path: "https://cdn.jsdelivr.net/gh/copy/v86@master/build/v86.wasm",
                 memory_size: 128 * 1024 * 1024,
                 vga_memory_size: 8 * 1024 * 1024,
                 screen_container: screenContainer,
-                bios: { url: "https://copy.sh/v86/bios/seabios.bin" },
-                vga_bios: { url: "https://copy.sh/v86/bios/vgabios.bin" },
+                bios: { url: "https://cdn.jsdelivr.net/gh/copy/v86@master/bios/seabios.bin" },
+                vga_bios: { url: "https://cdn.jsdelivr.net/gh/copy/v86@master/bios/vgabios.bin" },
                 
                 // 軽量なLinuxイメージ
-                cdrom: { url: "https://copy.sh/v86/images/alpine.iso" },
+                cdrom: { url: "https://cdn.jsdelivr.net/gh/copy/v86@master/images/alpine.iso" },
                 
                 autostart: true,
                 
