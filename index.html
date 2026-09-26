@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser VM (v86)</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #1e1e1e;
+            color: #fff;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        h1 { margin-bottom: 10px; }
+        #status { color: #00ff00; margin-bottom: 20px; }
+        /* v86の画面表示用コンテナ */
+        #screen {
+            background: #000;
+            border: 2px solid #444;
+            box-shadow: 0 0 20px rgba(0,255,0,0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🐧 Browser Linux VM</h1>
+    <p id="status">初期化中...</p>
+    
+    <!-- v86がここにLinuxの画面を描画します -->
+    <div id="screen"></div>
+
+    <!-- v86のエミュレーター本体を読み込み -->
+    <script src="https://copy.sh/v86/lib/v86.js"></script>
+    <script>
+        // ★★★ ここに、Renderで作ったWebSocketサーバーのURLを入力してください ★★★
+        // 例: "wss://my-wisp-proxy.onrender.com"
+        const WISP_SERVER = "wss://ここにRenderのURLを入れる.onrender.com";
+
+        const statusEl = document.getElementById('status');
+
+        // v86エミュレーターの起動設定
+        var emulator = new V86({
+            wasm_path: "https://copy.sh/v86/lib/v86.wasm",
+            memory_size: 128 * 1024 * 1024,      // メモリ 128MB
+            vga_memory_size: 8 * 1024 * 1024,    // VGAメモリ 8MB
+            screen_container: document.getElementById("screen"),
+            
+            // BIOSファイル（CDNから読み込み）
+            bios: { url: "https://copy.sh/v86/bios/seabios.bin" },
+            vga_bios: { url: "https://copy.sh/v86/bios/vgabios.bin" },
+            
+            // OSのイメージ（軽量なAlpine Linuxを使用）
+            cdrom: { url: "https://copy.sh/v86/images/alpine.iso" },
+            
+            // ネットワーク中継サーバー（Render）の指定
+            network_relay_url: WISP_SERVER,
+            
+            autostart: true,
+            
+            // 起動時のコールバック
+            start_cb: function() {
+                statusEl.innerText = "Linux起動中... (数秒〜数十秒かかります)";
+            },
+            
+            // 画面の描画更新時などのコールバック
+            emulator_started_cb: function() {
+                statusEl.innerText = "✅ 起動完了！ (ログイン: root / パスワードなし)";
+            }
+        });
+    </script>
+</body>
+</html>
