@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Browser Linux VM (v86)</title>
-    <!-- ダミーのファビコンを設定して404エラーを消す -->
     <link rel="icon" href="data:,">
     <style>
         body {
@@ -38,7 +37,6 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
             border-radius: 4px;
         }
-        /* v86の画面がここに描画される */
         #screen_container div { 
             white-space: pre; 
             font-family: monospace; 
@@ -69,14 +67,13 @@
         終了: 右上のタブを閉じる
     </div>
 
-    <!-- ✅ 正しい公式CDNのURL (unpkg) -->
-    <script src="https://unpkg.com/v86@latest/build/libv86.js"></script>
+    <!-- ✅ v86公式CDN (copy.sh) を使用 -->
+    <script src="https://copy.sh/v86/build/libv86.js"></script>
     
     <script>
         const statusEl = document.getElementById('status');
         const screenContainer = document.getElementById('screen_container');
 
-        // V86が正しく読み込まれたか確認
         if (typeof V86 === 'undefined') {
             statusEl.innerText = "❌ エラー: v86ライブラリの読み込みに失敗しました";
             statusEl.style.color = "red";
@@ -84,19 +81,15 @@
             statusEl.innerText = "Linuxを起動中... (初回は1分ほどかかることがあります)";
             
             var emulator = new V86({
-                wasm_path: "https://unpkg.com/v86@latest/build/v86.wasm",
-                memory_size: 128 * 1024 * 1024,      // 128MB
-                vga_memory_size: 8 * 1024 * 1024,    // 8MB
+                wasm_path: "https://copy.sh/v86/build/v86.wasm",
+                memory_size: 128 * 1024 * 1024,
+                vga_memory_size: 8 * 1024 * 1024,
                 screen_container: screenContainer,
-                bios: { url: "https://unpkg.com/v86@latest/bios/seabios.bin" },
-                vga_bios: { url: "https://unpkg.com/v86@latest/bios/vgabios.bin" },
+                bios: { url: "https://copy.sh/v86/bios/seabios.bin" },
+                vga_bios: { url: "https://copy.sh/v86/bios/vgabios.bin" },
                 
-                // 軽量なAlpine Linuxを使用
+                // 軽量なLinuxイメージ
                 cdrom: { url: "https://copy.sh/v86/images/alpine.iso" },
-                
-                // ネットワーク設定（Renderのバックエンド）
-                // ※ 現在のバックエンドは簡易版のため、VM内のインターネット接続は未対応です
-                // network_relay_url: "wss://render-wisp-proxy.onrender.com",
                 
                 autostart: true,
                 
